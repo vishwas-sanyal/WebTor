@@ -1,23 +1,54 @@
 'use strict';
 
-import { readFileSync } from 'fs';
-import bencode from 'bencode';
-import { createHash } from 'crypto';
-import bignum from 'bignum';
+const fs = require('fs');
+const bencode = require('bencode');
+const crypto = require('crypto');
+// const bignum = require('bignum');
 
-export function open(filepath) {
-    return bencode.decode(readFileSync(filepath));
+module.exports.BLOCK_LEN = Math.pow(2, 14);
+
+module.exports.open = (filepath) => {
+    console.log('Torrent loaded:', filepath);
+    return bencode.decode(fs.readFileSync(filepath));
 }
 
-export function size(torrent) {
+module.exports.infoHash = (torrent) => {
+    const info = bencode.encode(torrent.info);
+    return crypto.createHash('sha1').update(info).digest();
+}
+
+module.exports.size = (torrent) => {
     const size = torrent.info.files ?
         torrent.info.files.map(file => file.length).reduce((a, b) => a + b) :
         torrent.info.length;
 
-    return bignum.toBuffer(size, { size: 8 });
+    const buf = Buffer.alloc(8);
+    buf.writeBigUInt64BE(BigInt(size));
+    return buf;
+    // return bignum.toBuffer(size, { size: 8 });
 }
 
-export function infoHash(torrent) {
-    const info = bencode.encode(torrent.info);
-    return createHash('sha1').update(info).digest();
-}
+module.exports.pieceLen = (torrent, pieceIndex) => {
+    // const totalLength = bignum.fromBuffer(this.size(torrent)).toNumber();
+    const totalLength = Number(Buffer.from(module.exports.size(torrent)).readBigUInt64BE());
+    const pieceLength = torrent.info['piece length'];
+
+    const lastPieceLength = totalLength % pieceLength;
+    const lastPieceIndex = Math.floor(totalLength / pieceLength);
+
+    return lastPieceIndex === pieceIndex ? lastPieceLength : pieceLength;
+};
+
+module.exports.blocksPerPiece = (torrent, pieceIndex) => {
+    const pieceLength = this.pieceLen(torrent, pieceIndex);
+    return Math.ceil(pieceLength / this.BLOCK_LEN);
+};
+
+module.exports.blockLen = (torrent, pieceIndex, blockIndex) => {
+    const pieceLength = this.pieceLen(torrent, pieceIndex);
+
+    const lastPieceLength = pieceLength % this.BLOCK_LEN;
+    const lastPieceIndex = Math.floor(pieceLength / this.BLOCK_LEN);
+
+    return blockIndex === lastPieceIndex ? lastPieceLength : this.BLOCK_LEN;
+};

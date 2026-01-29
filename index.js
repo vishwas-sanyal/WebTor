@@ -1,20 +1,27 @@
-'use strict'
-// import { readFileSync } from 'fs';
-// import bencode from 'bencode';
-// import tracker from './src/tracker.js';
-import torrentParser from './src/torrent-parser.js';
-import download from './src/download.js';
+// 'use strict'
 
-// import dgram from 'dgram';
-// import { Buffer } from 'node:buffer';
-// import { URL } from 'url';
+// const download = require('./src/download');
+// const torrentParser = require('./src/torrent-parser');
 
-// const torrent = bencode.decode(readFileSync('puppy.torrent'));
-// console.log(torrent.announce.toString('utf8'));
+// const torrent = torrentParser.open(process.argv[2]);
 
-const torrent = torrentParser.open('puppy.torrent');
+// download(torrent, torrent.info.name);
+// console.log('Starting torrent client...');
 
-download(torrent);
-// tracker.getPeers = (torrent, peers) => {
-//     console.log('list of peers: ', peers);
-// };
+'use strict';
+
+const download = require('./src/download');
+const torrentParser = require('./src/torrent-parser');
+
+function runTorrent(torrentPath) {
+    const torrent = torrentParser.open(torrentPath);
+    download(torrent, torrent.info.name);
+    console.log('Starting torrent client...');
+}
+
+if (require.main === module) {
+    // CLI usage
+    runTorrent(process.argv[2]);
+}
+
+module.exports = runTorrent;

@@ -1,9 +1,13 @@
 'use strict';
 
-import { Buffer } from 'buffer';
-import { infoHash } from './torrent-parser';
+// import { Buffer } from 'buffer';
+const Buffer = require('buffer').Buffer;
+// import { infoHash } from './torrent-parser';
+const torrentParser = require('./torrent-parser');
+const util = require('./util');
 
-export function buildHandshake(torrent) {
+module.exports.buildHandshake = torrent => {
+
     const buf = Buffer.alloc(68);
     // pstrlen
     buf.writeUInt8(19, 0);
@@ -13,15 +17,16 @@ export function buildHandshake(torrent) {
     buf.writeUInt32BE(0, 20);
     buf.writeUInt32BE(0, 24);
     // info hash
-    infoHash(torrent).copy(buf, 28);
+    torrentParser.infoHash(torrent).copy(buf, 28);
     // peer id
-    buf.write(util.genId());
+    // buf.write(util.genId());
+    util.genId().copy(buf, 48);
     return buf;
 }
 
-export function buildKeepAlive() { return Buffer.alloc(4); }
+module.exports.buildKeepAlive = () => { return Buffer.alloc(4); }
 
-export function buildChoke() {
+module.exports.buildChoke = () => {
     const buf = Buffer.alloc(5);
     // length
     buf.writeUInt32BE(1, 0);
@@ -30,7 +35,7 @@ export function buildChoke() {
     return buf;
 }
 
-export function buildUnchoke() {
+module.exports.buildUnchoke = () => {
     const buf = Buffer.alloc(5);
     // length
     buf.writeUInt32BE(1, 0);
@@ -39,7 +44,8 @@ export function buildUnchoke() {
     return buf;
 }
 
-export function buildInterested() {
+module.exports.buildInterested = () => {
+
     const buf = Buffer.alloc(5);
     // length
     buf.writeUInt32BE(1, 0);
@@ -48,7 +54,7 @@ export function buildInterested() {
     return buf;
 }
 
-export function buildUninterested() {
+module.exports.buildUninterested = () => {
     const buf = Buffer.alloc(5);
     // length
     buf.writeUInt32BE(1, 0);
@@ -57,7 +63,7 @@ export function buildUninterested() {
     return buf;
 }
 
-export function buildHave(payload) {
+module.exports.buildHave = (payload) => {
     const buf = Buffer.alloc(9);
     // length
     buf.writeUInt32BE(5, 0);
@@ -68,8 +74,8 @@ export function buildHave(payload) {
     return buf;
 }
 
-export function buildBitfield(bitfield) {
-    const buf = Buffer.alloc(14);
+module.exports.buildBitfield = (bitfield) => {
+    const buf = Buffer.alloc(bitfield.length + 1 + 4);
     // length
     buf.writeUInt32BE(payload.length + 1, 0);
     // id
@@ -79,7 +85,7 @@ export function buildBitfield(bitfield) {
     return buf;
 }
 
-export function buildRequest(payload) {
+module.exports.buildRequest = (payload) => {
     const buf = Buffer.alloc(17);
     // length
     buf.writeUInt32BE(13, 0);
@@ -94,7 +100,7 @@ export function buildRequest(payload) {
     return buf;
 }
 
-export function buildPiece(payload) {
+module.exports.buildPiece = (payload) => {
     const buf = Buffer.alloc(payload.block.length + 13);
     // length
     buf.writeUInt32BE(payload.block.length + 9, 0);
@@ -109,7 +115,7 @@ export function buildPiece(payload) {
     return buf;
 }
 
-export function buildCancel(payload) {
+module.exports.buildCancel = (payload) => {
     const buf = Buffer.alloc(17);
     // length
     buf.writeUInt32BE(13, 0);
@@ -124,7 +130,7 @@ export function buildCancel(payload) {
     return buf;
 }
 
-export function buildPort(payload) {
+module.exports.buildPort = (payload) => {
     const buf = Buffer.alloc(7);
     // length
     buf.writeUInt32BE(3, 0);
