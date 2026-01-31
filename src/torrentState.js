@@ -6,6 +6,9 @@ let state = {
     progress: 0,
     status: "idle"
 };
+let filePath = null;
+let stopped = false;
+let socket = null;
 
 module.exports = {
     setProgress(value) {
@@ -23,5 +26,34 @@ module.exports = {
     reset() {
         state.progress = 0;
         state.status = "idle";
+    },
+    //////////////////////////////////
+    setFilePath(path) {
+        filePath = path;
+    },
+    getFilePath() {
+        return filePath;
+    },
+    //////////////////////////////////
+    stop() {
+        stopped = true;
+    },
+    resume() {
+        stopped = false;
+    },
+    isStopped() {
+        return stopped;
+    },
+    //////////////////////////////////
+    setSocket(s) {
+        socket = s;
+    },
+
+    getSocket() {
+        return socket;
+    },
+
+    clearSocket() {
+        socket = null;
     }
 };

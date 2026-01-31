@@ -68,9 +68,10 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 const torrentState = require('./src/torrentState.js');
-
+const stopClean = require('./src/stopClean.js');
 const runTorrent = require('./index');
-const percentage = require('./src/progress');
+// const fs = require('fs');
+// const percentage = require('./src/progress');
 
 const app = express();
 // app.use(cors());
@@ -103,7 +104,7 @@ console.log = (...args) => {
     io.emit('log', message);
 };
 
-// Optional: also stream errors
+// also stream errors
 const originalError = console.error;
 console.error = (...args) => {
     const message = args.join(' ');
@@ -127,7 +128,20 @@ app.post('/upload', upload.single('torrent'), (req, res) => {
 
     console.log('Torrent uploaded:', req.file.originalname);
 
+    module.exports.outputFileName = () => { return req.file.originalname.replace(/\.torrent$/i, ""); }
+    // linuxmint-22.3-xfce-64bit.iso
+    // const DOWNLOAD_DIR = path.join(__dirname, "downloads");
+
+    // if (!fs.existsSync(DOWNLOAD_DIR)) {
+    //     fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
+    // }
+
+    // const filePath = path.join(DOWNLOAD_DIR, outputFileName);
+    // torrentState.setFilePath(filePath);
+
+    // torrentState.setFilePath(req.file.originalname);
     runTorrent(req.file.path);
+    // const filePath = req.file.path;
 
     res.json({
         message: 'Torrent accepted',
@@ -135,24 +149,23 @@ app.post('/upload', upload.single('torrent'), (req, res) => {
     });
 });
 
-// export default torrentState = {
-//     progress: 0,
-//     status: "idle" // idle | handshaking | downloading | paused | stopped
-// };
+// import fs from "fs";
+// import path from "path";
 
-// app.get('/progress', (req, res) => {
-//     res.setHeader('Content-Type', 'text/event-stream');
-//     res.setHeader('Cache-Control', 'no-cache');
-//     res.setHeader('Connection', 'keep-alive');
+// app.post("/delete", (req, res) => {
+//     const { filename } = req.body; // e.g., "linuxmint.iso"
+//     const filePath = path.join(filename);
 
-//     const interval = setInterval(() => {
-//         res.write(`data: ${progress.get()}\n\n`);
-//     }, 500);
-
-//     req.on('close', () => {
-//         clearInterval(interval);
+//     fs.mkdirSync(path.join(__dirname, "torrents"));
+//     fs.unlink(filePath, (err) => {
+//         if (err) {
+//             console.error(err);
+//             return res.status(500).json({ error: "Could not delete file" });
+//         }
+//         res.json({ message: "File deleted successfully" });
 //     });
 // });
+
 app.get("/progress", (req, res) => {
     console.log("🟢 Client connected to /progress");
 
@@ -178,8 +191,27 @@ app.get("/progress", (req, res) => {
 
     req.on("close", () => {
         console.log("🔴 Client disconnected");
+        stopClean.stopTorrent();      // 🔴 TERMINATE DOWNLOAD
+        stopClean.cleanupFiles();     // 🧹 DELETE partial files + torrents dir
         clearInterval(interval);
     });
+});
+
+app.post("/stop", (req, res) => {
+    console.log("🛑 Stop requested by client");
+
+    stopClean.stopTorrent();
+    stopClean.cleanupFiles();
+
+    res.json({ ok: true });
+});
+
+
+process.on("SIGINT", () => {
+    console.log("🔴 Server shutting down");
+    stopClean.stopTorrent();
+    stopClean.cleanupFiles();
+    process.exit(0);
 });
 
 

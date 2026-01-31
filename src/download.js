@@ -7,25 +7,52 @@ const net = require('net');
 const tracker = require('./tracker');
 const message = require('./message');
 const Pieces = require('./pieces.js');
-// const server = require('./../server.js');
+const server = require('./../server.js');
 const torrentState = require('./torrentState.js');
+const stopClean = require('./stopClean.js');
+const path = require('path');
 
-module.exports = (torrent, path) => {
+const DOWNLOAD_DIR = path.join(__dirname, "downloads");
+
+if (!fs.existsSync(DOWNLOAD_DIR)) {
+    fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
+}
+
+module.exports = (torrent,) => {
     // const requested = [];
     tracker.getPeers(torrent, peers => {
-        // const pieces = new Pieces(torrent.info.pieces.length / 20);
         const pieces = new Pieces(torrent);
-        const file = fs.openSync(path, 'w');
+
+        const filePath = path.join(DOWNLOAD_DIR, server.outputFileName());
+
+        const file = fs.openSync(filePath, 'w');
+
+        torrentState.setFilePath(filePath);
+
         peers.forEach(peer => download(peer, torrent, pieces, file));
     });
 };
 
 function download(peer, torrent, peices, file) {
+    if (torrentState.isStopped()) return;
     const socket = new net.Socket();
+    torrentState.setSocket(socket);
     console.log('Connecting to peer:', peer.ip, peer.port);
-    socket.on('error', console.log);
+    // socket.on('error', console.log);
+    socket.on("error", err => {
+        if (!torrentState.isStopped()) {
+            console.log(err.message);
+        }
+    });
     socket.connect(peer.port, peer.ip, () => {
         console.log('Connected to peer:', peer.ip);
+
+        if (torrentState.isStopped()) {
+            socket.destroy();
+            return;
+        }
+        if (!socket || socket.destroyed) return;
+
         socket.write(message.buildHandshake(torrent));
     });
     const queue = new Queue(torrent);
@@ -40,6 +67,11 @@ function onWholeMsg(socket, callback) {
         // msgLen calculates the length of a whole message
         const msgLen = () => handshake ? savedBuf.readUInt8(0) + 49 : savedBuf.readInt32BE(0) + 4;
         savedBuf = Buffer.concat([savedBuf, recvBuf]);
+
+        if (torrentState.isStopped()) {
+            socket.end();
+            return;
+        }
 
         while (savedBuf.length >= 4 && savedBuf.length >= msgLen()) {
             callback(savedBuf.slice(0, msgLen()));
@@ -59,6 +91,9 @@ function msgHandler(msg, socket, pieces, queue, torrent, file) {
         // torrentState.status = "handshaking";
         torrentState.setStatus("handshaking");
         // torrentState.setProgress(0);
+
+        if (torrentState.isStopped()) return;
+        if (!socket || socket.destroyed) return;
 
         socket.write(message.buildInterested());
     } else {
@@ -84,6 +119,10 @@ function chokeHandler(socket) {
 function unchokeHandler(socket, pieces, queue) {
     queue.choked = false;
     console.log('Peer unchoked us');
+
+    if (torrentState.isStopped()) return;
+    if (socket.destroyed) return;
+
     requestPiece(socket, pieces, queue);
 }
 
@@ -117,6 +156,8 @@ function bitfieldHandler(socket, pieces, queue, payload) {
 
 function pieceHandler(socket, pieces, queue, torrent, file, pieceResp) {
     // console.log(pieceResp);
+    if (torrentState.isStopped()) return;
+
     pieces.addReceived(pieceResp);
     pieces.printPercentDone();
 
@@ -126,15 +167,19 @@ function pieceHandler(socket, pieces, queue, torrent, file, pieceResp) {
     torrentState.setStatus("downloading");
     // torrentState.setProgress(0);
 
-    console.log('Received block:', pieceResp.index, pieceResp.begin);
+    // console.log('Received block:', pieceResp.index, pieceResp.begin);
     const offset = pieceResp.index * torrent.info['piece length'] + pieceResp.begin;
     fs.write(file, pieceResp.block, 0, pieceResp.block.length, offset, () => { });
-    console.log('Written to file at offset:', offset);
+    // console.log('Written to file at offset:', offset);
+
+    // torrentState.setFilePath(offset);
 
     if (pieces.isDone()) {
         console.log('DONE!');
         torrentState.setProgress(100);
         socket.end();
+        stopClean.stopTorrent();
+        stopClean.cleanupFiles();
         try { fs.closeSync(file); } catch (e) { }
     } else {
         requestPiece(socket, pieces, queue);
@@ -143,11 +188,15 @@ function pieceHandler(socket, pieces, queue, torrent, file, pieceResp) {
 
 function requestPiece(socket, pieces, queue) {
     if (queue.choked) return null;
+    if (torrentState.isStopped()) return;
+    if (torrentState.isStopped()) return;
+    if (!socket || socket.destroyed) return;
+
 
     while (queue.length()) {
         const pieceBlock = queue.deque();
         if (pieces.needed(pieceBlock)) {
-            console.log('Requesting block:', JSON.stringify(pieceBlock));
+            // console.log('Requesting block:', JSON.stringify(pieceBlock));
             socket.write(message.buildRequest(pieceBlock));
             pieces.addRequested(pieceBlock);
             break;

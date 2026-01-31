@@ -4,11 +4,13 @@ const fs = require('fs');
 const bencode = require('bencode');
 const crypto = require('crypto');
 // const bignum = require('bignum');
+// const torrentState = require('./torrentState');
 
 module.exports.BLOCK_LEN = Math.pow(2, 14);
 
 module.exports.open = (filepath) => {
     console.log('Torrent loaded:', filepath);
+    // torrentState.setFilePath(filepath);
     return bencode.decode(fs.readFileSync(filepath));
 }
 

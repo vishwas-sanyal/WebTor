@@ -26,7 +26,7 @@ export default function DropZone({ onFile }) {
                 borderRadius: "12px",
                 textAlign: "center",
                 width: "400px",
-                marginTop: "100px"
+                marginTop: "30px"
             }}
         >
             <h2>BitTorrent Client</h2>
