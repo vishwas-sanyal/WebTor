@@ -1,7 +1,7 @@
 'use strict';
 
 const fs = require('fs');
-const Queue = require('./queue');
+const Queue = require('./queue.js');
 // const queue = new Queue(torrent);
 const net = require('net');
 const tracker = require('./tracker');
@@ -34,9 +34,9 @@ module.exports = (torrent,) => {
 };
 
 function download(peer, torrent, peices, file) {
-    if (torrentState.isStopped()) return;
+    // if (torrentState.isStopped()) return;
     const socket = new net.Socket();
-    torrentState.setSocket(socket);
+    // torrentState.setSocket(socket);
     console.log('Connecting to peer:', peer.ip, peer.port);
     // socket.on('error', console.log);
     socket.on("error", err => {
@@ -47,10 +47,10 @@ function download(peer, torrent, peices, file) {
     socket.connect(peer.port, peer.ip, () => {
         console.log('Connected to peer:', peer.ip);
 
-        if (torrentState.isStopped()) {
-            socket.destroy();
-            return;
-        }
+        // if (torrentState.isStopped()) {
+        //     socket.destroy();
+        //     return;
+        // }
         if (!socket || socket.destroyed) return;
 
         socket.write(message.buildHandshake(torrent));
@@ -68,10 +68,10 @@ function onWholeMsg(socket, callback) {
         const msgLen = () => handshake ? savedBuf.readUInt8(0) + 49 : savedBuf.readInt32BE(0) + 4;
         savedBuf = Buffer.concat([savedBuf, recvBuf]);
 
-        if (torrentState.isStopped()) {
-            socket.end();
-            return;
-        }
+        // if (torrentState.isStopped()) {
+        //     socket.end();
+        //     return;
+        // }
 
         while (savedBuf.length >= 4 && savedBuf.length >= msgLen()) {
             callback(savedBuf.slice(0, msgLen()));
@@ -101,7 +101,7 @@ function msgHandler(msg, socket, pieces, queue, torrent, file) {
 
         if (m.id === 0) chokeHandler(socket);
         if (m.id === 1) unchokeHandler(socket, pieces, queue);
-        if (m.id === 4) haveHandler(m.payload, socket, pieces, queue);
+        if (m.id === 4) haveHandler(socket, pieces, queue, m.payload);
         if (m.id === 5) bitfieldHandler(socket, pieces, queue, m.payload);
         if (m.id === 7) pieceHandler(socket, pieces, queue, torrent, file, m.payload);
     }
@@ -113,20 +113,26 @@ function isHandshake(msg) {
 }
 
 function chokeHandler(socket) {
-    socket.end();
+    // socket.end();
+    // queue.choked = true;
+    console.log("Peer choked us");
 }
 
 function unchokeHandler(socket, pieces, queue) {
     queue.choked = false;
     console.log('Peer unchoked us');
 
-    if (torrentState.isStopped()) return;
+    // if (queue.length() === 0) {
+    //     pieces.missingPieces().forEach(p => queue.addPiece(p));
+    // }
+
+    if (torrentState.isPaused()) return;
     if (socket.destroyed) return;
 
     requestPiece(socket, pieces, queue);
 }
 
-function haveHandler(payload, socket, pieces, queue) {
+function haveHandler(socket, pieces, queue, payload) {
     //...
     const pieceIndex = payload.readUInt32BE(0);
     const queueEmpty = queue.length === 0;
@@ -134,21 +140,35 @@ function haveHandler(payload, socket, pieces, queue) {
     console.log('QUEUE VALUE:', queue);
     console.log('QUEUE TYPE:', typeof queue);
     console.log('QUEUE KEYS:', Object.getOwnPropertyNames(Object.getPrototypeOf(queue)));
-
+    // console.log("QUEUE STATE", {
+    //     size: queue.queue.length,
+    //     choked: queue.choked,
+    //     busy: queue.busy
+    // });
 
     queue.addPiece(pieceIndex);
-
+    // if (queueEmpty) requestPiece(socket, pieces, queue);
+    // queue.queue(pieceIndex);
     if (queueEmpty) requestPiece(socket, pieces, queue);
 }
 
 function bitfieldHandler(socket, pieces, queue, payload) {
     const queueEmpty = queue.length === 0;
     payload.forEach((byte, i) => {
-        for (let j = 0; j < 8; j++) {
+        // for (let j = 0; j < 8; j++) {
 
-            if (byte % 2) queue.addPiece(i * 8 + 7 - j);
+        //     if (byte % 2) queue.addPiece(i * 8 + 7 - j);
 
-            byte = Math.floor(byte / 2);
+        //     byte = Math.floor(byte / 2);
+        // }
+        for (let bit = 0; bit < 8; bit++) {
+            const pieceIndex = i * 8 + bit;
+
+            if (pieceIndex >= pieces.totalPieces) return;
+
+            if (byte & (1 << (7 - bit))) {
+                queue.addPiece(pieceIndex);
+            }
         }
     });
     if (queueEmpty) requestPiece(socket, pieces, queue);
@@ -156,6 +176,7 @@ function bitfieldHandler(socket, pieces, queue, payload) {
 
 function pieceHandler(socket, pieces, queue, torrent, file, pieceResp) {
     // console.log(pieceResp);
+    if (torrentState.isPaused()) return;
     if (torrentState.isStopped()) return;
 
     pieces.addReceived(pieceResp);
@@ -167,10 +188,10 @@ function pieceHandler(socket, pieces, queue, torrent, file, pieceResp) {
     torrentState.setStatus("downloading");
     // torrentState.setProgress(0);
 
-    // console.log('Received block:', pieceResp.index, pieceResp.begin);
+    console.log('Received block:', pieceResp.index, pieceResp.begin);
     const offset = pieceResp.index * torrent.info['piece length'] + pieceResp.begin;
     fs.write(file, pieceResp.block, 0, pieceResp.block.length, offset, () => { });
-    // console.log('Written to file at offset:', offset);
+    console.log('Written to file at offset:', offset);
 
     // torrentState.setFilePath(offset);
 
@@ -187,19 +208,20 @@ function pieceHandler(socket, pieces, queue, torrent, file, pieceResp) {
 }
 
 function requestPiece(socket, pieces, queue) {
-    if (queue.choked) return null;
-    if (torrentState.isStopped()) return;
+    if (torrentState.isPaused()) return;
     if (torrentState.isStopped()) return;
     if (!socket || socket.destroyed) return;
+    if (queue.choked) return null;
 
 
     while (queue.length()) {
         const pieceBlock = queue.deque();
+        // if (!pieceBlock) return;
         if (pieces.needed(pieceBlock)) {
-            // console.log('Requesting block:', JSON.stringify(pieceBlock));
+            console.log('Requesting block:', JSON.stringify(pieceBlock));
             socket.write(message.buildRequest(pieceBlock));
             pieces.addRequested(pieceBlock);
-            break;
+            return;
         }
     }
 }

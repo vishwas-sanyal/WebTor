@@ -38,7 +38,7 @@ const styles = {
         color: "#00ff9c",
         fontFamily: "monospace",
         padding: "12px",
-        height: "200px",
+        height: "150px",
         width: "900px",
         overflowY: "auto",
         borderRadius: "8px",

@@ -1,66 +1,3 @@
-// const express = require('express');
-// const multer = require('multer');
-// const path = require('path');
-// const cors = require('cors');
-
-// const runTorrent = require('./index');
-
-// const app = express();
-// app.use(cors());
-
-// const upload = multer({
-//     dest: path.join(__dirname, 'torrents')
-// });
-
-// app.post('/upload', upload.single('torrent'), (req, res) => {
-//     if (!req.file) {
-//         return res.status(400).json({ error: 'No torrent received' });
-//     }
-
-//     console.log('Torrent uploaded:', req.file.originalname);
-
-//     // 🔥 THIS is the key line
-//     runTorrent(req.file.path);
-
-//     res.json({
-//         message: 'Torrent accepted',
-//         name: req.file.originalname
-//     });
-// });
-
-// // app.get('/progress', (req, res) => {
-// //     res.set({
-// //         'Content-Type': 'text/event-stream',
-// //         'Cache-Control': 'no-cache',
-// //         'Connection': 'keep-alive'
-// //     });
-
-// //     const timer = setInterval(() => {
-// //         res.write(`data: ${progress.get()}\n\n`);
-// //     }, 500);
-
-// //     req.on('close', () => clearInterval(timer));
-// // });
-// const progress = require('./src/progress');
-
-// app.get('/progress', (req, res) => {
-//     res.setHeader('Content-Type', 'text/event-stream');
-//     res.setHeader('Cache-Control', 'no-cache');
-//     res.setHeader('Connection', 'keep-alive');
-
-//     const interval = setInterval(() => {
-//         res.write(`data: ${progress.get()}\n\n`);
-//     }, 500);
-
-//     req.on('close', () => {
-//         clearInterval(interval);
-//     });
-// });
-
-
-// app.listen(3000, () => {
-//     console.log('Server running on http://localhost:3000');
-// });
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -191,11 +128,22 @@ app.get("/progress", (req, res) => {
 
     req.on("close", () => {
         console.log("🔴 Client disconnected");
-        stopClean.stopTorrent();      // 🔴 TERMINATE DOWNLOAD
-        stopClean.cleanupFiles();     // 🧹 DELETE partial files + torrents dir
+        // stopClean.stopTorrent();      // 🔴 TERMINATE DOWNLOAD
+        // stopClean.cleanupFiles();     // 🧹 DELETE partial files + torrents dir
         clearInterval(interval);
     });
 });
+
+app.post("/pause", (req, res) => {
+    torrentState.pause();
+    res.json({ ok: true });
+});
+
+app.post("/resume", (req, res) => {
+    torrentState.resume();
+    res.json({ ok: true });
+});
+
 
 app.post("/stop", (req, res) => {
     console.log("🛑 Stop requested by client");
@@ -217,5 +165,4 @@ process.on("SIGINT", () => {
 
 server.listen(3000, () => {
     console.log('Server running on http://localhost:3000');
-    // console.log(`-------------------------------${torrentState.get().progress}`);
 });

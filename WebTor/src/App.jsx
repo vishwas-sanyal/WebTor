@@ -3,7 +3,8 @@ import useTorrentProgress from "./hooks/useTorrentProgress.js";
 import DropZone from "./components/DropZone.jsx";
 import ProgressBar from "./components/ProgressBar.jsx";
 import ServerConsole from "./components/ServerConsole.jsx";
-import Detail from "./components/Detail.jsx"
+import Detail from "./components/Detail.jsx";
+import Controls from "./components/Controls.jsx";
 
 export default function App() {
   const { progress, status } = useTorrentProgress();
@@ -59,7 +60,7 @@ export default function App() {
         {status === "handshaking" && "Handshake process..."}
         {status === "downloading" && "Downloading..."}
       </p>
-
+      <Controls status={status} />
       {/* <p>Status: {status}</p>
       <p>Progress: {progress}</p> */}
 
@@ -67,7 +68,7 @@ export default function App() {
       {status === "downloading" && <ProgressBar value={progress} />}
       {status === "downloading" && <ServerConsole />}
       {status === "handshaking" && <ServerConsole />}
-
+      {status === "paused" && <Detail />}
 
       {/* COMPLETED */}
       {progress === 100 && (

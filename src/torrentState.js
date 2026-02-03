@@ -7,8 +7,12 @@ let state = {
     status: "idle"
 };
 let filePath = null;
-let stopped = false;
 let socket = null;
+// let stopped = false;
+let flow = {
+    paused: false,
+    stopped: false,
+}
 
 module.exports = {
     setProgress(value) {
@@ -35,14 +39,24 @@ module.exports = {
         return filePath;
     },
     //////////////////////////////////
-    stop() {
-        stopped = true;
+    pause() {
+        flow.paused = true;
+        state.status = "paused";
+        console.log("---Paused---");
     },
     resume() {
-        stopped = false;
+        flow.paused = false;
+        state.status = "downloading";
+        console.log("---Resumed---");
+    },
+    isPaused() {
+        return flow.paused;
+    },
+    stop() {
+        flow.stopped = true;
     },
     isStopped() {
-        return stopped;
+        return flow.stopped;
     },
     //////////////////////////////////
     setSocket(s) {
