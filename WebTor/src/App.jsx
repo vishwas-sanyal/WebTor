@@ -12,11 +12,16 @@ export default function App() {
   const startDownload = async (file) => {
     const formData = new FormData();
     formData.append("torrent", file);
-
-    await fetch("http://localhost:3000/upload", {
-      method: "POST",
-      body: formData
-    });
+    try {
+      await fetch("http://localhost:3000/upload", {
+        method: "POST",
+        body: formData
+      });
+    }
+    catch (err) {
+      alert("❌ Backend server is not running.\nPlease start the server first.");
+      return;
+    }
   };
 
   useEffect(() => {
