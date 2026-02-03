@@ -20,13 +20,13 @@
 //         </div>
 //     );
 // }
-export default function Controls({ status }) {
+export default function Controls({ status, BACKEND_URL }) {
     return (
         <div style={{ marginTop: 20 }}>
             {status === "downloading" && (
                 <button
                     onClick={() =>
-                        fetch("http://localhost:3000/pause", { method: "POST" })
+                        fetch(`${BACKEND_URL}/pause`, { method: "POST" })
                     }
                 >
                     ⏸ Pause
@@ -36,7 +36,7 @@ export default function Controls({ status }) {
             {status === "paused" && (
                 <button
                     onClick={() =>
-                        fetch("http://localhost:3000/resume", { method: "POST" })
+                        fetch(`${BACKEND_URL}/resume`, { method: "POST" })
                     }
                 >
                     ▶️ Resume

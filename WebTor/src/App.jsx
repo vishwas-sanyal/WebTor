@@ -8,12 +8,13 @@ import Controls from "./components/Controls.jsx";
 
 export default function App() {
   const { progress, status } = useTorrentProgress();
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
   const startDownload = async (file) => {
     const formData = new FormData();
     formData.append("torrent", file);
     try {
-      await fetch("http://localhost:3000/upload", {
+      await fetch(`${BACKEND_URL}/upload`, {
         method: "POST",
         body: formData
       });
@@ -26,7 +27,7 @@ export default function App() {
 
   useEffect(() => {
     const handleUnload = () => {
-      navigator.sendBeacon("http://localhost:3000/stop");
+      navigator.sendBeacon(`${BACKEND_URL}/stop`);
     };
 
     window.addEventListener("beforeunload", handleUnload);
@@ -65,7 +66,7 @@ export default function App() {
         {status === "handshaking" && "Handshake process..."}
         {status === "downloading" && "Downloading..."}
       </p>
-      <Controls status={status} />
+      <Controls status={status} BACKEND_URL={BACKEND_URL} />
       {/* <p>Status: {status}</p>
       <p>Progress: {progress}</p> */}
 
