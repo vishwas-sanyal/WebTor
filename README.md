@@ -39,6 +39,11 @@ Frontend
 
 ## 🎥 Installation Video:
 
+
+https://github.com/user-attachments/assets/378742ae-bc31-4441-a589-5844b7414e88
+
+
+
 ---
 
 ## 🚀 Installation & Usage
