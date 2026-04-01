@@ -25,7 +25,7 @@ export default function DropZone({ onFile }) {
                 padding: "50px",
                 borderRadius: "12px",
                 textAlign: "center",
-                width: "400px",
+                width: "300px",
                 marginTop: "30px"
             }}
         >
